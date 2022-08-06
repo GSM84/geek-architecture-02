@@ -16,7 +16,7 @@ public class WebServer {
                 Socket socket = serverSocket.accept();
                 System.out.println("New client connected!");
 
-                new Thread(new RequestHandler(socket, WWW)).start();
+                new Thread(new RequestHandler(socket, new FileApi(WWW), new HttpApi())).start();
             }
         } catch (IOException e) {
             e.printStackTrace();

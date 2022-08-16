@@ -1,5 +1,7 @@
 package ru.geekbrains;
 
+import ru.geekbrains.domain.HttpRequest;
+import ru.geekbrains.domain.HttpResponse;
 import ru.geekbrains.service.FileService;
 import ru.geekbrains.service.SocketService;
 
@@ -19,17 +21,25 @@ public class RequestHandler implements Runnable {
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
-        String firstLine = rawRequest.pollFirst();
-        String[] parts = firstLine.split(" ");
+        HttpRequest httpRequest = RequestParser.parse(rawRequest);
+        HttpResponse httpResponse = new HttpResponse();
 
-        if (!fileService.exists(parts[1]) || fileService.isDirectory(parts[1])) {
-            System.out.println("HERE");
-            String rawResponse = "HTTP/1.1 404 NOT_FOUND\n"+
-                                 "Content-Type: text/html; charset=utf-8\n"+
-                                 "\n"+
-                                 "<h1>Файл не найден!</h1>";
+        if (!fileService.exists(httpRequest.getPath())) {
+            httpResponse.setProtocol("HTTP/1.1");
+            httpResponse.setStatusCode(404);
+            httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+            httpResponse.setBody("<h1>Файл не найден!</h1>");
 
-            socketService.writeResposnse(rawResponse);
+        } else if (fileService.isDirectory(httpRequest.getPath())) {
+            httpResponse.setProtocol("HTTP/1.1");
+            httpResponse.setStatusCode(404);
+            httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+            httpResponse.setBody("<h1>Передана директория вместо файла!</h1>");
+
+        }
+
+        if (httpResponse.getStatusCode() > 0) {
+            socketService.writeResposnse(ResponseSerializer.serialize(httpResponse));
             try {
                 socketService.close();
             } catch (IOException ex) {
@@ -38,14 +48,12 @@ public class RequestHandler implements Runnable {
             return;
         }
 
-        String rawResponse =
-                "HTTP/1.1 200 OK\n"+
-                "Content-Type: text/html; charset=utf-8\n"+
-                "\n"+
-                fileService.readFile(parts[1]);
+        httpResponse.setProtocol("HTTP/1.1");
+        httpResponse.setStatusCode(200);
+        httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+        httpResponse.setBody(fileService.readFile(httpRequest.getPath()));
 
-
-        socketService.writeResposnse(rawResponse);
+        socketService.writeResposnse(ResponseSerializer.serialize(httpResponse));
         System.out.println("Client disconnected!");
 
 

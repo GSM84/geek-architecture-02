@@ -1,45 +1,68 @@
 package ru.geekbrains;
 
-import java.io.BufferedReader;
+import ru.geekbrains.domain.HttpRequest;
+import ru.geekbrains.domain.HttpResponse;
+import ru.geekbrains.service.FileService;
+import ru.geekbrains.service.SocketService;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
+import java.util.Deque;
 
 public class RequestHandler implements Runnable {
 
-    private final Socket socket;
-    private final FileApi fileApi;
-    private  final HttpApi httpApi;
+    private final FileService fileService;
+    private final SocketService socketService;
 
-    public RequestHandler(Socket socket, FileApi fileApi, HttpApi httpApi) {
-        this.socket = socket;
-        this.fileApi = fileApi;
-        this.httpApi = httpApi;
+    public RequestHandler(SocketService socketService, FileService fileService) {
+        this.fileService = fileService;
+        this.socketService = socketService;
     }
 
     @Override
     public void run() {
-        try (BufferedReader input = new BufferedReader(
-                new InputStreamReader(
-                        socket.getInputStream(), StandardCharsets.UTF_8));
-             PrintWriter output = new PrintWriter(socket.getOutputStream())
-        ) {
-            while (!input.ready());
+        Deque<String> rawRequest = socketService.readRequest();
+        HttpRequest httpRequest = RequestParser.parse(rawRequest);
+        HttpResponse httpResponse = new HttpResponse();
 
-            httpApi.fetchFileName(input);
+        if (!fileService.exists(httpRequest.getPath())) {
+            httpResponse.setProtocol("HTTP/1.1");
+            httpResponse.setStatusCode(404);
+            httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+            httpResponse.setBody("<h1>Файл не найден!</h1>");
 
-            fileApi.formatPath(httpApi.getFileName());
+        } else if (fileService.isDirectory(httpRequest.getPath())) {
+            httpResponse.setProtocol("HTTP/1.1");
+            httpResponse.setStatusCode(404);
+            httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+            httpResponse.setBody("<h1>Передана директория вместо файла!</h1>");
 
-            if (fileApi.isFileExists(output)) {
-                fileApi.pushFile(output);
-            }
-
-            System.out.println("Client disconnected!");
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+
+        if (httpResponse.getStatusCode() > 0) {
+            socketService.writeResposnse(ResponseSerializer.serialize(httpResponse));
+            try {
+                socketService.close();
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+            return;
+        }
+
+        httpResponse.setProtocol("HTTP/1.1");
+        httpResponse.setStatusCode(200);
+        httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+        httpResponse.setBody(fileService.readFile(httpRequest.getPath()));
+
+        socketService.writeResposnse(ResponseSerializer.serialize(httpResponse));
+        System.out.println("Client disconnected!");
+
+
+        try {
+            socketService.close();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+
     }
 }
 

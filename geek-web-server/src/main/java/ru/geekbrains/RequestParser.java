@@ -6,7 +6,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RequestParser {
+public final class RequestParser {
 
     public static HttpRequest parse(Deque<String> rawRequest) {
         String[] parts = rawRequest.pollFirst().split(" ");
@@ -28,6 +28,11 @@ public class RequestParser {
         // parse body
         rawRequest.forEach(e -> body.append(e));
 
-        return new HttpRequest(parts[0], parts[1], headers, body.toString());
+        return HttpRequest.createBuilder()
+                .withMethod(parts[0])
+                .withPath(parts[1])
+                .withHeaders(headers)
+                .withBody(body.toString())
+                .build();
     }
 }

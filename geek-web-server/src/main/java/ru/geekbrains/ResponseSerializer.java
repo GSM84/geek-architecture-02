@@ -4,7 +4,7 @@ import ru.geekbrains.domain.HttpResponse;
 
 import java.util.Map;
 
-public class ResponseSerializer {
+public final class ResponseSerializer {
 
     public static String serialize(HttpResponse response) {
         StringBuilder sb = new StringBuilder();

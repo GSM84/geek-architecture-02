@@ -1,25 +1,28 @@
 package ru.geekbrains;
 
-import ru.geekbrains.service.FileService;
-import ru.geekbrains.service.SocketService;
-
+import ru.geekbrains.config.ServerConfig;
+import ru.geekbrains.config.ServerConfigFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class WebServer {
 
-    private static String WWW = "D:\\Study\\Java\\architecture\\www";
-
     public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(8088)) {
+        ServerConfig config = ServerConfigFactory.create(args);
+        try (ServerSocket serverSocket = new ServerSocket(config.getPort())) {
             System.out.println("Server started!");
 
             while (true) {
                 Socket socket = serverSocket.accept();
                 System.out.println("New client connected!");
 
-                new Thread(new RequestHandler(new SocketService(socket), new FileService(WWW))).start();
+                new Thread(
+                        new RequestHandler(
+                                socket
+                              , config.getWww()
+                        )
+                ).start();
             }
         } catch (IOException e) {
             e.printStackTrace();

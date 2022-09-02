@@ -16,6 +16,9 @@
 
     <modules>
         <module>geek-web-server</module>
+        <module>patterns</module>
     </modules>
+
+
 
 </project>

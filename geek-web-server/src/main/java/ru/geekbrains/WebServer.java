@@ -2,6 +2,11 @@ package ru.geekbrains;
 
 import ru.geekbrains.config.ServerConfig;
 import ru.geekbrains.config.ServerConfigFactory;
+import ru.geekbrains.handler.MethodHandlerFactory;
+import ru.geekbrains.service.FileServiceFactory;
+import ru.geekbrains.service.SocketService;
+import ru.geekbrains.service.SocketServiceFactory;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,10 +22,16 @@ public class WebServer {
                 Socket socket = serverSocket.accept();
                 System.out.println("New client connected!");
 
+                SocketService socketService = SocketServiceFactory.create(socket);
+
                 new Thread(
                         new RequestHandler(
-                                socket
-                              , config.getWww()
+                                socketService
+                              , MethodHandlerFactory.create(
+                                      socketService
+                                    , config
+                                    , FileServiceFactory.create(config.getWww())
+                                )
                         )
                 ).start();
             }

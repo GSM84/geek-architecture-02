@@ -7,6 +7,8 @@ public class HttpResponse {
 
     private int statusCode;
 
+    private String codeName;
+
     private String protocol;
 
     private Map<String, String> headers;
@@ -47,6 +49,11 @@ public class HttpResponse {
 
         public ResponseBuilder withStatusCode(int statusCode){
             this.response.statusCode = statusCode;
+            return this;
+        }
+
+        public ResponseBuilder withStatusCodeName(String statusCodeName){
+            this.response.codeName = statusCodeName;
             return this;
         }
 
